@@ -5,8 +5,8 @@
  *      Author: Hamid
  */
 
-#ifndef INC_GMT020_02_H_
-#define INC_GMT020_02_H_
+#ifndef INC_ST7789_2x240x240_12BIT_H_
+#define INC_ST7789_2x240x240_12BIT_H_
 
 #include "stm32f1xx_hal.h"
 #include "fonts.h"
@@ -42,7 +42,7 @@
 #define RST_GPIO_Port GPIOA
 
 // RGB565 Colors
-#define BLACK   0x0000
+/*#define BLACK   0x0000
 #define WHITE   0xFFFF
 #define RED     0xF800
 #define GREEN   0x07E0
@@ -51,7 +51,7 @@
 #define YELLOW  0xFFC0
 #define PURPLE  0xF81F
 #define PINK    0xD252
-
+*/
 // LCD Command Definitions
 #define ST7789_SWRST  0x01
 #define ST7789_SLPOUT 0x11
@@ -71,16 +71,16 @@
 #define LCD_HEIGHT    ((uint16_t)240)
 #define LCD_SIZE      ((uint32_t)57600) //LCD_WIDTH * LCD_HEIGHT
 
-// RGB444 Colors
-/*#define BLACK   0x0000
-#define WHITE   0xFFFF
+//RGB444 Colors
+#define BLACK   0x000
+#define WHITE   0xFFF
 #define RED     0xF00
 #define GREEN   0x0F0
 #define BLUE    0x00F
 #define CYAN    0x0FF
 #define YELLOW  0xFF0
 #define PURPLE  0xF0F
-*/
+
 extern SPI_HandleTypeDef hspi1;
 
 extern uint16_t colors[];
@@ -91,8 +91,8 @@ static inline void DATA_MODE(uint8_t pin_index) {
 	HAL_GPIO_WritePin(ST7789_GPIO_Port, (1U << DC_PIN_INDEX), 1);
 } //(ST7789_GPIO_Port->BSRR = CS##s##_PIN_LOW | DC_PIN_HIGH)
 static inline void COMMAND_MODE(uint8_t pin_index) {
-		HAL_GPIO_WritePin(ST7789_GPIO_Port, (1U << pin_index), 0); //CS##s##_PIN_INDEX
-		HAL_GPIO_WritePin(ST7789_GPIO_Port, (1U << DC_PIN_INDEX), 0);
+	HAL_GPIO_WritePin(ST7789_GPIO_Port, (1U << pin_index), 0); //CS##s##_PIN_INDEX
+	HAL_GPIO_WritePin(ST7789_GPIO_Port, (1U << DC_PIN_INDEX), 0);
 } //(ST7789_GPIO_Port->BSRR = CS##s##_PIN_LOW | DC_PIN_LOW)
 static inline void COMM_END(uint8_t pin_index) {HAL_GPIO_WritePin(ST7789_GPIO_Port, (1U << pin_index), 1);} //(ST7789_GPIO_Port->BSRR = CS##s##_PIN_HIGH)
 

@@ -21,7 +21,7 @@
 #define BACKLIGHT_ON (ST7789_GPIO_Port->BSRR = TFT_BLK_HIGH)
 #define BACKLIGHT_OFF (ST7789_GPIO_Port->BSRR = TFT_BLK_LOW)
 
-uint16_t colors[] = { BLACK, WHITE, RED, GREEN, BLUE, CYAN, YELLOW, PURPLE, PINK };
+uint16_t colors[] = { BLACK, WHITE, RED, GREEN, BLUE, CYAN, YELLOW, PURPLE };
 //uint8_t addr[] = {ST7789_CASET, ST7789_RASET, ST7789_RAMWR };
 
 
@@ -130,8 +130,7 @@ uint16_t colors[] = { BLACK, WHITE, RED, GREEN, BLUE, CYAN, YELLOW, PURPLE, PINK
 
 void ST7789_init()
 {
-
-	uint8_t data[] = {0x55, 0x00};
+	uint8_t data[] = {0x03, 0x00};
 	uint16_t data_16bit[] = {ST7789_XSTART, 0x00EF, ST7789_YSTART, 0x00EF};
 	uint8_t addr[] = {ST7789_SWRST, ST7789_SLPOUT, ST7789_COLMOD, ST7789_MADCTL, ST7789_CASET, ST7789_RASET, ST7789_INVON, ST7789_NORON, ST7789_DISPON};
 
@@ -299,7 +298,7 @@ void ST7789_draw_pixel(uint16_t x, uint16_t y, uint16_t colour)
 	ST7789_end_write();
 }
 
-void ST7789_clear_screen(uint8_t pin_index, uint16_t colour)
+void ST7789_clear_screen16(uint8_t pin_index, uint16_t colour)
 {
 	uint32_t i;
 	uint8_t pixel1 = colour >> 8;
@@ -312,6 +311,35 @@ void ST7789_clear_screen(uint8_t pin_index, uint16_t colour)
 		SPI1->DR = pixel1;
 		while(!(SPI1->SR & SPI_SR_TXE));  // Wait for TX buffer empty
 		SPI1->DR = pixel2;
+	}
+	while(SPI1->SR & SPI_SR_BSY); 	// Wait for SPI not busy
+	COMM_END(pin_index);
+}
+
+void ST7789_clear_screen(uint8_t pin_index, uint16_t colour)
+{
+	uint32_t i;
+	uint8_t r = colour >> 8;
+	uint8_t g = (colour >> 4) & 0xF;
+	uint8_t b = colour & 0xF;
+	uint8_t byte1 = g | (r << 4);
+	uint8_t byte2 = r | (b << 4);
+	uint8_t byte3 = b | (g << 4);
+
+	//16 bit ready: change bytes to chunks and i = LCD_SIZE / 2
+	uint16_t chunk1 = (byte1 << 8) | byte2;
+	uint16_t chunk2 = (byte3 << 8) | byte1;
+    uint16_t chunk3 = (byte2 << 8) | byte3;
+
+	ST7789_set_addr(0, LCD_WIDTH-1, 0, LCD_HEIGHT-1);
+	DATA_MODE(pin_index);
+	for (i = LCD_SIZE / 2; i > 0; i--){
+		while(!(SPI1->SR & SPI_SR_TXE));  // Wait for TX buffer empty
+		SPI1->DR = byte1;
+		while(!(SPI1->SR & SPI_SR_TXE));  // Wait for TX buffer empty
+		SPI1->DR = byte2;
+		while(!(SPI1->SR & SPI_SR_TXE));  // Wait for TX buffer empty
+		SPI1->DR = byte3;
 	}
 	while(SPI1->SR & SPI_SR_BSY); 	// Wait for SPI not busy
 	COMM_END(pin_index);

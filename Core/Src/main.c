@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +31,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define TEXT_X 20
+#define TEXT_Y 20
+#define TEXT_Y_OFFSET 10
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,7 +50,9 @@ UART_HandleTypeDef huart1;
 
 DMA_HandleTypeDef hdma_memtomem_dma1_channel1;
 /* USER CODE BEGIN PV */
-uint8_t c = 0;
+
+uint16_t y_pos = TEXT_Y;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,7 +63,7 @@ static void MX_SPI1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+void print_value(char*, uint16_t, uint16_t, uint16_t);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -75,7 +79,15 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+  uint8_t c = 0;
+  uint16_t tick = 0;
+  uint16_t prev_tick = 0;
 
+  uint16_t init_ticks = 0;
+  uint16_t clear_ticks = 0;
+  uint16_t hello_ticks =0;
+
+  char* mess[] = { "INIT, ms: ", "CLEAR, ms: ", "PRINT HELLO!, ms: " };
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -102,12 +114,29 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 //  HAL_GPIO_WritePin(GPIOA, TFT1_CS_Pin|TFT2_CS_Pin, GPIO_PIN_SET);
+  //TIM1->CR1 = TIM_CR1_CEN;
+  HAL_TIM_Base_Start(&htim1);
+  prev_tick = __HAL_TIM_GET_COUNTER(&htim1);//TIM1->CNT;
   ST7789_init();
+  tick = __HAL_TIM_GET_COUNTER(&htim1);//TIM1->CNT;
+  init_ticks = (tick - prev_tick)/10;
   HAL_GPIO_WritePin(GPIOA, TFT_BLK_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-  ST7789_clear_screen(CS1_PIN_INDEX,WHITE); //
-  ST7789_clear_screen(CS2_PIN_INDEX,YELLOW);
-  ST7789_draw_string(20,50,BLACK,"HELLO!");
+  prev_tick = __HAL_TIM_GET_COUNTER(&htim1);//TIM1->CNT;
+  ST7789_clear_screen(CS1_PIN_INDEX,YELLOW);
+  tick = __HAL_TIM_GET_COUNTER(&htim1);//TIM1->CNT;
+  clear_ticks = (tick - prev_tick)/10;
+  ST7789_clear_screen(CS2_PIN_INDEX,WHITE);
+  prev_tick = __HAL_TIM_GET_COUNTER(&htim1);//TIM1->CNT;
+  ST7789_draw_string(20,y_pos,BLACK,"HELLO!");
+  y_pos+=TEXT_Y_OFFSET;
+  tick = __HAL_TIM_GET_COUNTER(&htim1); //TIM1->CNT;
+  hello_ticks = (tick - prev_tick)/10;
+  HAL_Delay(1000);
+  print_value(mess[0], 22, init_ticks, BLACK);
+  print_value(mess[1], 22, clear_ticks, BLACK);
+  print_value(mess[2], 22, hello_ticks, BLACK);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -116,9 +145,10 @@ int main(void)
   {
 	  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 	  HAL_Delay(1000);
-//	  ST7789_clear_screen(colors[c]);
-//	  c++;
-//	  if (c>8) c=0;
+	  ST7789_clear_screen(CS2_PIN_INDEX, colors[c > 6 ? 0 : c + 1]);
+	  ST7789_clear_screen(CS1_PIN_INDEX, colors[c]);
+	  c++;
+	  if (c>7) c=0;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -222,21 +252,18 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 72;
+  htim1.Init.Prescaler = 7199;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
   }
-  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_EXTERNAL1;
-  sSlaveConfig.InputTrigger = TIM_TS_ETRF;
-  sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
-  sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
-  sSlaveConfig.TriggerFilter = 0;
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_DISABLE;
+  sSlaveConfig.InputTrigger = TIM_TS_ITR0;
   if (HAL_TIM_SlaveConfigSynchro(&htim1, &sSlaveConfig) != HAL_OK)
   {
     Error_Handler();
@@ -362,7 +389,18 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+// Use snprintf for safety
+void print_value(char* str, uint16_t str_length, uint16_t value, uint16_t color) {
+    char value_str[6];
+    uint16_t x_pos = TEXT_X;
+    snprintf(value_str, 6, "%d", value);
+    if (str) ST7789_draw_string(x_pos, y_pos, color, str);
+    x_pos += str_length * 5;
+    ST7789_draw_string(x_pos, y_pos, color, value_str);
+    y_pos += TEXT_Y_OFFSET;
+    if (y_pos >= (LCD_HEIGHT - TEXT_Y)) y_pos = TEXT_Y;
 
+}
 /* USER CODE END 4 */
 
 /**
